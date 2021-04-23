@@ -7,7 +7,11 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import android.util.Log
+import android.view.LayoutInflater
 import android.view.animation.AnimationUtils
+import android.widget.Button
+import android.widget.Toast
 import com.kakapo.asyncwars.R
 import com.kakapo.asyncwars.async.GetImageAsyncTask
 import com.kakapo.asyncwars.async.MyIntentService
@@ -49,9 +53,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
         mBinding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(mBinding.root)
+
+
 
         val rotateAnimation = AnimationUtils.loadAnimation(this, R.anim.rotate_indefinitely)
         mBinding.contentLoadingProgressBar.startAnimation(rotateAnimation)
@@ -73,6 +78,7 @@ class MainActivity : AppCompatActivity() {
                 MethodToDownloadImage.Coroutine -> setMethodBeingUsedInUi("Coroutine")
             }
         }
+
 
         mBinding.buttonDownloadBitmap.setOnClickListener{
             mBinding.imageView.setImageBitmap(null)
@@ -112,7 +118,7 @@ class MainActivity : AppCompatActivity() {
 
     //---------- async method --------------//
     fun runUiBlockingProcessing(){
-        showToast("Result: ${fibonacci(40)}")
+        showToast("Result: ${fibonacci(40)}",)
     }
 
     fun getImageUsingThread(){
