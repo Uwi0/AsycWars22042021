@@ -11,6 +11,6 @@ class MyIntentService : IntentService(Constants.MY_INTENT_SERVICE) {
     override fun onHandleIntent(intent: Intent?) {
         val bmp = DownloaderUtils.downloadImage()
 
-        BroadcasterUtils.sendBitmap(applicationContext, bmp+)
+        BroadcasterUtils.sendBitmap(applicationContext, bmp)
     }
 }
