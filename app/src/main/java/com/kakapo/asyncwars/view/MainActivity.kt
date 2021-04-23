@@ -21,7 +21,7 @@ class MainActivity : AppCompatActivity() {
 
     private val imageDownloadListener = object: ImageDownloadListener{
         override fun onSuccess(bitmap: Bitmap?) {
-            TODO("Not yet implemented")
+            
         }
 
     }
