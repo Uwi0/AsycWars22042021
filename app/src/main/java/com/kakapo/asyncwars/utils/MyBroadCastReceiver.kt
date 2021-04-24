@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 
-class MyBroadCastReceiver(val imageDownloadListener: ImageDownloadListener): BroadcastReceiver(){
+class MyBroadCastReceiver(private val imageDownloadListener: ImageDownloadListener): BroadcastReceiver(){
     override fun onReceive(context: Context?, intent: Intent) {
         val bitmap = intent.getParcelableExtra<Bitmap>(Constants.IMAGE_BITMAP)
 

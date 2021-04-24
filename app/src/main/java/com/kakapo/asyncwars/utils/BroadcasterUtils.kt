@@ -18,7 +18,7 @@ internal object BroadcasterUtils {
     }
 
     fun registerReceiver(context: Context, myBroadcastReceiver: MyBroadCastReceiver){
-        myBroadcastReceiver?.let {
+        myBroadcastReceiver.let {
             val intentFiler = IntentFilter()
             intentFiler.addAction(Constants.FILTER_ACTION_KEY)
             LocalBroadcastManager.getInstance(context).registerReceiver(it, intentFiler)

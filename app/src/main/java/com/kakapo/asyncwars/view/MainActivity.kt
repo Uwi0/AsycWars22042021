@@ -8,10 +8,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import android.util.Log
-import android.view.LayoutInflater
 import android.view.animation.AnimationUtils
-import android.widget.Button
-import android.widget.Toast
 import com.kakapo.asyncwars.R
 import com.kakapo.asyncwars.async.GetImageAsyncTask
 import com.kakapo.asyncwars.async.MyIntentService
@@ -22,6 +19,8 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlinx.coroutines.*
+import java.lang.Runnable
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
@@ -48,8 +47,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mBinding: ActivityMainBinding
 
-    var handlerThread: HandlerThread? = null
-    var single: Disposable? = null
+   private var handlerThread: HandlerThread? = null
+    private var single: Disposable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,10 +60,10 @@ class MainActivity : AppCompatActivity() {
         val rotateAnimation = AnimationUtils.loadAnimation(this, R.anim.rotate_indefinitely)
         mBinding.contentLoadingProgressBar.startAnimation(rotateAnimation)
 
-        val doPrecessingInUiThread = true
-        val methodToUse = MethodToDownloadImage.Thread
+        val doProcessingInUiThread = false
+        val methodToUse = MethodToDownloadImage.Coroutine
 
-        if (doPrecessingInUiThread){
+        if (doProcessingInUiThread){
             mBinding.textViewMethodUsed.text = resources.getString(R.string.calculating_fibonacci_number)
         }else{
             when(methodToUse){
@@ -82,17 +81,33 @@ class MainActivity : AppCompatActivity() {
 
         mBinding.buttonDownloadBitmap.setOnClickListener{
             mBinding.imageView.setImageBitmap(null)
-
-            runUiBlockingProcessing()
+            Log.i("clicked", "button clicked")
+            if (doProcessingInUiThread){
+                runUiBlockingProcessing()
+            }else{
+                when (methodToUse) {
+                    MethodToDownloadImage.Thread -> getImageUsingThread()
+                    MethodToDownloadImage.AsyncTask -> getImageUsingAsyncTask()
+                    MethodToDownloadImage.IntentService -> getImageUsingIntentService()
+                    MethodToDownloadImage.Handler -> getImageUsingHandler()
+                    MethodToDownloadImage.HandlerThread -> getImageUsingHandlerThread()
+                    MethodToDownloadImage.Executor -> getImageFromExecutors()
+                    MethodToDownloadImage.RxJava -> getImageUsingRx()
+                    MethodToDownloadImage.Coroutine -> getImageUsingCoroutine()
+                }
+            }
         }
     }
-
-
 
     //---------- life cycle --------------//
 
     override fun onStart() {
         super.onStart()
+        BroadcasterUtils.registerReceiver(this, mReceiver)
+    }
+
+    override fun onStop() {
+        super.onStop()
         BroadcasterUtils.unregisterReceiver(this, mReceiver)
     }
 
@@ -104,11 +119,11 @@ class MainActivity : AppCompatActivity() {
 
     //---------- helper method --------------//
 
-    fun setMethodBeingUsedInUi(method: String){
+    private fun setMethodBeingUsedInUi(method: String){
         mBinding.textViewMethodUsed.text = resources.getString(R.string.download_image_method, method)
     }
 
-    fun fibonacci(number: Int) : Long{
+    private fun fibonacci(number: Int) : Long{
         return if(number == 1|| number == 2){
             1
         }else{
@@ -117,32 +132,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     //---------- async method --------------//
-    fun runUiBlockingProcessing(){
-        showToast("Result: ${fibonacci(40)}",)
+    private fun runUiBlockingProcessing(){
+        showToast("Result: ${fibonacci(40)}")
     }
 
-    fun getImageUsingThread(){
+    private fun getImageUsingThread(){
         val thread = Thread(myRunnable)
         thread.start()
     }
 
-    fun getImageUsingIntentService(){
+    private fun getImageUsingIntentService(){
         val intent = Intent(this, MyIntentService::class.java)
-        startActivity(intent)
+        startService(intent)
     }
 
-    fun getImageFromExecutors(){
+    private fun getImageFromExecutors(){
         val executor = Executors.newFixedThreadPool(4)
         executor.submit(myRunnable)
     }
 
-    fun getImageUsingAsyncTask(){
+    private fun getImageUsingAsyncTask(){
         val mAsyncTask = GetImageAsyncTask(imageDownloadListener)
         @Suppress("DEPRECATION")
         mAsyncTask.execute()
     }
 
-    fun getImageUsingHandler(){
+    private fun getImageUsingHandler(){
         val uiHandler = Handler(Looper.getMainLooper())
 
         Thread{
@@ -154,7 +169,7 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    fun getImageUsingHandlerThread(){
+    private fun getImageUsingHandlerThread(){
         handlerThread = HandlerThread(Constants.MY_HANDLER_THREAD)
 
         handlerThread?.let{
@@ -169,10 +184,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun getImageUsingRx(){
-        single = Single.create<Bitmap>{ emiter ->
+    private fun getImageUsingRx(){
+        single = Single.create<Bitmap>{ emitter ->
             DownloaderUtils.downloadImage()?.let{ bitmap ->
-                emiter.onSuccess(bitmap)
+                emitter.onSuccess(bitmap)
             }
         }.observeOn(AndroidSchedulers.mainThread())
             .subscribeOn(Schedulers.io())
@@ -181,15 +196,26 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-    fun getImageUsingCoroutine(){
-        //TODO: add implementation here
+    private fun getImageUsingCoroutine(){
+        val scope = CoroutineScope(Dispatchers.Default)
+        scope.launch {
+            val deferredJob = async(Dispatchers.IO) {
+                DownloaderUtils.downloadImage()
+            }
+            withContext(Dispatchers.Main){
+                val bitmap = deferredJob.await()
+                mBinding.imageView.setImageBitmap(bitmap)
+            }
+        }
     }
     //run async task
     inner class MyRunnable: Runnable{
         override fun run() {
             val bitmap = DownloaderUtils.downloadImage()
 
-            mBinding.imageView.setImageBitmap(bitmap)
+            runOnUiThread{
+                mBinding.imageView.setImageBitmap(bitmap)
+            }
         }
 
     }
